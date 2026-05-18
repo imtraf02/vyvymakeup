@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { weddingContractSchema, type SettingsSchema, type WeddingContractSchema } from "@/lib/schema";
 
 export async function getSettings() {
 	const supabase = await createClient();
@@ -27,7 +28,7 @@ export async function getSettings() {
 	};
 }
 
-export async function updateSettings(data: any) {
+export async function updateSettings(data: SettingsSchema) {
 	const supabase = await createClient();
 	const { error } = await supabase
 		.from("settings")
@@ -51,8 +52,6 @@ export async function updateSettings(data: any) {
 	revalidatePath("/");
 	return { success: true };
 }
-
-import type { WeddingContractSchema } from "@/lib/schema";
 
 export async function getWeddingCombos() {
 	const supabase = await createClient();
@@ -89,24 +88,32 @@ export async function getWeddingExtraServices() {
 
 export async function saveWeddingContract(data: WeddingContractSchema) {
 	const supabase = await createClient();
+	const parsed = weddingContractSchema.safeParse(data);
+
+	if (!parsed.success) {
+		return { error: "Dữ liệu hợp đồng không hợp lệ" };
+	}
+
+	const contractData = parsed.data;
+	const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 	// 1. Insert contract
 	const { data: contract, error: contractError } = await supabase
 		.from("wedding_contracts")
 		.insert({
-			customer_name: data.customerName,
-			phone: data.phone,
-			address: data.address,
-			wedding_date: data.weddingDate.toISOString(),
-			travel_fee: data.travelFee,
-			discount: data.discount,
-			incurred_cost: data.incurredCost,
-			incurred_cost_reason: data.incurredCostReason,
-			include_vat: data.includeVAT,
-			deposit: data.deposit,
-			pickup_date: data.pickupDate.toISOString(),
-			contract_date: data.contractDate.toISOString(),
-			notes: data.notes,
+			customer_name: contractData.customerName,
+			phone: contractData.phone,
+			address: contractData.address,
+			wedding_date: contractData.weddingDate.toISOString(),
+			travel_fee: contractData.travelFee,
+			discount: contractData.discount,
+			incurred_cost: contractData.incurredCost,
+			incurred_cost_reason: contractData.incurredCostReason,
+			include_vat: contractData.includeVAT,
+			deposit: contractData.deposit,
+			pickup_date: contractData.pickupDate.toISOString(),
+			contract_date: contractData.contractDate.toISOString(),
+			notes: contractData.notes,
 		})
 		.select()
 		.single();
@@ -116,13 +123,19 @@ export async function saveWeddingContract(data: WeddingContractSchema) {
 		return { error: contractError.message };
 	}
 
+	const rollbackContract = async () => {
+		await supabase.from("wedding_contracts").delete().match({ id: contract.id });
+	};
+	const isMissingCategoryColumn = (message?: string) =>
+		message?.includes("'category' column") || message?.includes("category column");
+
 	// 2. Insert combos and services
-	for (const combo of data.combos) {
+	for (const combo of contractData.combos) {
 		const { data: insertedCombo, error: comboError } = await supabase
 			.from("wedding_contract_combos")
 			.insert({
 				contract_id: contract.id,
-				combo_id: combo.id || null,
+				combo_id: combo.id && uuidPattern.test(combo.id) ? combo.id : null,
 				combo_name: combo.comboName,
 				base_price: combo.basePrice,
 			})
@@ -131,7 +144,8 @@ export async function saveWeddingContract(data: WeddingContractSchema) {
 
 		if (comboError) {
 			console.error("Error saving wedding contract combo:", comboError);
-			continue;
+			await rollbackContract();
+			return { error: comboError.message };
 		}
 
 		const services = combo.services.map((s, idx) => ({
@@ -148,12 +162,14 @@ export async function saveWeddingContract(data: WeddingContractSchema) {
 
 		if (servicesError) {
 			console.error("Error saving wedding contract combo services:", servicesError);
+			await rollbackContract();
+			return { error: servicesError.message };
 		}
 	}
 
 	// 3. Insert media services
-	if (data.mediaServices && data.mediaServices.length > 0) {
-		const mediaServices = data.mediaServices.map((s) => ({
+	if (contractData.mediaServices && contractData.mediaServices.length > 0) {
+		const mediaServices = contractData.mediaServices.map((s) => ({
 			contract_id: contract.id,
 			category: "Media",
 			name: s.name,
@@ -166,13 +182,33 @@ export async function saveWeddingContract(data: WeddingContractSchema) {
 			.insert(mediaServices);
 
 		if (mediaServicesError) {
-			console.error("Error saving wedding contract media services:", mediaServicesError);
+			if (isMissingCategoryColumn(mediaServicesError.message)) {
+				const mediaServicesWithoutCategory = mediaServices.map((service) => ({
+					contract_id: service.contract_id,
+					name: service.name,
+					price: service.price,
+					quantity: service.quantity,
+				}));
+				const { error: retryError } = await supabase
+					.from("wedding_contract_extra_services")
+					.insert(mediaServicesWithoutCategory);
+
+				if (retryError) {
+					console.error("Error saving wedding contract media services:", retryError);
+					await rollbackContract();
+					return { error: retryError.message };
+				}
+			} else {
+				console.error("Error saving wedding contract media services:", mediaServicesError);
+				await rollbackContract();
+				return { error: mediaServicesError.message };
+			}
 		}
 	}
 
 	// 4. Insert extra services
-	if (data.extraServices && data.extraServices.length > 0) {
-		const extraServices = data.extraServices.map((s) => ({
+	if (contractData.extraServices && contractData.extraServices.length > 0) {
+		const extraServices = contractData.extraServices.map((s) => ({
 			contract_id: contract.id,
 			category: "Extra",
 			name: s.name,
@@ -185,7 +221,27 @@ export async function saveWeddingContract(data: WeddingContractSchema) {
 			.insert(extraServices);
 
 		if (extraServicesError) {
-			console.error("Error saving wedding contract extra services:", extraServicesError);
+			if (isMissingCategoryColumn(extraServicesError.message)) {
+				const extraServicesWithoutCategory = extraServices.map((service) => ({
+					contract_id: service.contract_id,
+					name: service.name,
+					price: service.price,
+					quantity: service.quantity,
+				}));
+				const { error: retryError } = await supabase
+					.from("wedding_contract_extra_services")
+					.insert(extraServicesWithoutCategory);
+
+				if (retryError) {
+					console.error("Error saving wedding contract extra services:", retryError);
+					await rollbackContract();
+					return { error: retryError.message };
+				}
+			} else {
+				console.error("Error saving wedding contract extra services:", extraServicesError);
+				await rollbackContract();
+				return { error: extraServicesError.message };
+			}
 		}
 	}
 
@@ -242,6 +298,21 @@ export async function getWeddingContractById(id: string) {
 export async function deleteWeddingContract(id: string) {
 	const supabase = await createClient();
 	const { error } = await supabase.from("wedding_contracts").delete().match({ id });
+
+	if (error) return { error: error.message };
+	revalidatePath("/contracts");
+	return { success: true };
+}
+
+export async function updateWeddingContractDeposit(id: string, deposit: number) {
+	const supabase = await createClient();
+	const { error } = await supabase
+		.from("wedding_contracts")
+		.update({
+			deposit: Math.max(0, deposit),
+			updated_at: new Date().toISOString(),
+		})
+		.match({ id });
 
 	if (error) return { error: error.message };
 	revalidatePath("/contracts");

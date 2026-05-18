@@ -21,7 +21,8 @@ import * as React from "react";
 import {
 	deleteWeddingContract,
 	getSettings,
-	getWeddingContracts
+	getWeddingContracts,
+	updateWeddingContractDeposit,
 } from "@/app/actions";
 import type { SettingsSchema } from "@/lib/schema";
 import { toast } from "sonner";
@@ -38,15 +39,55 @@ import {
 	DrawerClose,
 } from "@/components/ui/drawer";
 
+type PaymentFilter = "all" | "pending" | "completed";
+
+type WeddingContractListItem = {
+	id: string;
+	created_at: string;
+	customer_name: string;
+	phone: string;
+	contract_date: string;
+	wedding_date: string;
+	travel_fee: number | string | null;
+	discount: number | string | null;
+	incurred_cost: number | string | null;
+	include_vat: boolean;
+	deposit: number | string | null;
+	wedding_contract_combos?: {
+		base_price: number | string | null;
+	}[];
+	wedding_contract_extra_services?: {
+		price: number | string | null;
+		quantity: number | string | null;
+	}[];
+	type?: "wedding";
+};
+
 export default function ContractsPage() {
-	const [contracts, setContracts] = React.useState<any[]>([]);
+	const [contracts, setContracts] = React.useState<WeddingContractListItem[]>([]);
 	const [searchTerm, setSearchTerm] = React.useState("");
-	const [paymentFilter, setPaymentFilter] = React.useState<"all" | "pending" | "completed">("all");
-	const [selectedContract, setSelectedContract] = React.useState<any | null>(null);
+	const [paymentFilter, setPaymentFilter] = React.useState<PaymentFilter>("all");
+	const [selectedContract, setSelectedContract] = React.useState<WeddingContractListItem | null>(null);
+	const [paymentContract, setPaymentContract] = React.useState<WeddingContractListItem | null>(null);
+	const [paymentAmount, setPaymentAmount] = React.useState("");
+	const [isUpdatingPayment, setIsUpdatingPayment] = React.useState(false);
 	const [isDownloading, setIsDownloading] = React.useState(false);
 	const [settings, setSettings] = React.useState<SettingsSchema | undefined>();
 	const [isLoading, setIsLoading] = React.useState(true);
 	const isMobile = useIsMobile();
+
+	const calculateContractTotal = (contract: WeddingContractListItem) => {
+		const comboTotal = contract.wedding_contract_combos?.reduce((acc, combo) => acc + (Number(combo.base_price) || 0), 0) || 0;
+		const extraTotal = contract.wedding_contract_extra_services?.reduce((acc, service) => acc + (Number(service.price) * (Number(service.quantity) || 1)), 0) || 0;
+		const subtotal = comboTotal + extraTotal + Number(contract.travel_fee) + Number(contract.incurred_cost || 0) - (Number(contract.discount) || 0);
+		return contract.include_vat ? subtotal * 1.1 : subtotal;
+	};
+
+	const calculateRemaining = (contract: WeddingContractListItem) =>
+		calculateContractTotal(contract) - Number(contract.deposit || 0);
+
+	const parseCurrencyInput = (value: string) =>
+		Number(value.replace(/[^\d]/g, "")) || 0;
 
 	const loadContracts = async () => {
 		setIsLoading(true);
@@ -54,7 +95,7 @@ export default function ContractsPage() {
 			const weddingData = await getWeddingContracts();
 
 		// Add type tag to each
-		const weddingContracts = weddingData.map(c => ({ ...c, type: 'wedding' }));
+		const weddingContracts = weddingData.map((c) => ({ ...c, type: "wedding" as const }));
 
 		// Combine and sort by date
 		const combined = [...weddingContracts].sort((a, b) =>
@@ -67,8 +108,10 @@ export default function ContractsPage() {
 	};
 
 	React.useEffect(() => {
-		loadContracts();
-		getSettings().then((s) => setSettings(s || undefined));
+		queueMicrotask(() => {
+			void loadContracts();
+			void getSettings().then((s) => setSettings(s || undefined));
+		});
 	}, []);
 
 	const handleDelete = async (id: string, e: React.MouseEvent) => {
@@ -84,7 +127,57 @@ export default function ContractsPage() {
 		}
 	};
 
-	const formatCurrency = (amount: any) =>
+	const openPaymentDialog = (contract: WeddingContractListItem, e?: React.MouseEvent) => {
+		e?.stopPropagation();
+		setPaymentContract(contract);
+		setPaymentAmount("");
+	};
+
+	const updateLocalDeposit = (contractId: string, deposit: number) => {
+		setContracts((current) =>
+			current.map((contract) =>
+				contract.id === contractId ? { ...contract, deposit } : contract,
+			),
+		);
+		setSelectedContract((current) =>
+			current?.id === contractId ? { ...current, deposit } : current,
+		);
+		setPaymentContract((current) =>
+			current?.id === contractId ? { ...current, deposit } : current,
+		);
+	};
+
+	const handleUpdatePayment = async (payFull = false) => {
+		if (!paymentContract) return;
+
+		const remaining = Math.max(0, calculateRemaining(paymentContract));
+		const paymentValue = payFull ? remaining : parseCurrencyInput(paymentAmount);
+		if (paymentValue <= 0) {
+			toast.error("Vui lòng nhập số tiền thanh toán");
+			return;
+		}
+
+		const nextDeposit = Math.min(
+			calculateContractTotal(paymentContract),
+			Number(paymentContract.deposit || 0) + paymentValue,
+		);
+		setIsUpdatingPayment(true);
+		try {
+			const res = await updateWeddingContractDeposit(paymentContract.id, nextDeposit);
+			if (res.success) {
+				updateLocalDeposit(paymentContract.id, nextDeposit);
+				toast.success("Đã cập nhật thanh toán");
+				setPaymentContract(null);
+				setPaymentAmount("");
+			} else {
+				toast.error("Lỗi: " + res.error);
+			}
+		} finally {
+			setIsUpdatingPayment(false);
+		}
+	};
+
+	const formatCurrency = (amount: unknown) =>
 		new Intl.NumberFormat("vi-VN", {
 			style: "currency",
 			currency: "VND",
@@ -99,12 +192,7 @@ export default function ContractsPage() {
 
 		// Payment filter
 		if (paymentFilter !== "all") {
-			let total = 0;
-			const comboTotal = c.wedding_contract_combos?.reduce((acc: number, combo: any) => acc + (Number(combo.base_price) || 0), 0) || 0;
-			const extraTotal = c.wedding_contract_extra_services?.reduce((acc: number, s: any) => acc + (Number(s.price) * (Number(s.quantity) || 1)), 0) || 0;
-			const subtotal = comboTotal + extraTotal + Number(c.travel_fee) + Number(c.incurred_cost || 0) - (Number(c.discount) || 0);
-			total = c.include_vat ? subtotal * 1.1 : subtotal;
-			const remaining = total - Number(c.deposit || 0);
+			const remaining = calculateRemaining(c);
 			if (paymentFilter === "pending" && remaining <= 0) return false;
 			if (paymentFilter === "completed" && remaining > 0) return false;
 		}
@@ -200,7 +288,7 @@ export default function ContractsPage() {
 						].map((f) => (
 							<button
 								key={f.id}
-								onClick={() => setPaymentFilter(f.id as any)}
+								onClick={() => setPaymentFilter(f.id as PaymentFilter)}
 								className={cn(
 									"px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all",
 									paymentFilter === f.id
@@ -245,16 +333,8 @@ export default function ContractsPage() {
 					</div>
 				) : (
 					filteredContracts.map((contract, i) => {
-						let total = 0;
-						const comboTotal = contract.wedding_contract_combos?.reduce((acc: number, c: any) => {
-							return acc + (Number(c.base_price) || 0);
-						}, 0) || 0;
-						const extraTotal = contract.wedding_contract_extra_services?.reduce((acc: number, s: any) => {
-							return acc + (Number(s.price) * (Number(s.quantity) || 1));
-						}, 0) || 0;
-						const subtotal = comboTotal + extraTotal + Number(contract.travel_fee) + Number(contract.incurred_cost || 0) - (Number(contract.discount) || 0);
-						total = contract.include_vat ? subtotal * 1.1 : subtotal;
-						const remaining = total - Number(contract.deposit || 0);
+						const total = calculateContractTotal(contract);
+						const remaining = calculateRemaining(contract);
 
 						return (
 							<div
@@ -300,6 +380,9 @@ export default function ContractsPage() {
 												{formatCurrency(remaining)}
 											</span>
 										</p>
+										<p className="text-[10px] text-theme-text-muted mt-0.5">
+											Đã thu: {formatCurrency(contract.deposit)}
+										</p>
 									</div>
 								</div>
 
@@ -321,6 +404,14 @@ export default function ContractsPage() {
 
 									{/* Action buttons */}
 									<div className="flex items-center gap-0.5">
+										{remaining > 0 && (
+											<button
+												className="flex items-center gap-1 text-[11px] font-semibold text-red-500 hover:text-red-600 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
+												onClick={(e) => openPaymentDialog(contract, e)}
+											>
+												Thu nợ
+											</button>
+										)}
 										<button
 											className="flex items-center gap-1 text-[11px] font-semibold text-theme-text-muted hover:text-theme-gold-hover px-2.5 py-1.5 rounded-lg hover:bg-theme-bg-muted transition-colors"
 											onClick={(e) => {
@@ -440,6 +531,96 @@ export default function ContractsPage() {
 						<WeddingContractPreview data={mapToWeddingSchema(selectedContract)} settings={settings} />
 					</div>
 				</>
+			)}
+
+			{/* ── Payment update dialog ── */}
+			{paymentContract && (
+				<div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-2 no-print">
+					<div
+						className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+						onClick={() => !isUpdatingPayment && setPaymentContract(null)}
+					/>
+					<div className="relative w-full max-w-md rounded-3xl bg-white border border-theme-border shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+						<div className="p-3 border-b border-theme-border bg-gradient-to-r from-theme-bg-muted to-white">
+							<div className="flex items-center justify-between gap-3">
+								<div>
+									<p className="text-[10px] uppercase tracking-[0.2em] font-black text-theme-text-muted">
+										Cập nhật thanh toán
+									</p>
+									<h2 className="font-bold text-theme-text-dark mt-0.5">
+										{paymentContract.customer_name}
+									</h2>
+								</div>
+								<button
+									type="button"
+									disabled={isUpdatingPayment}
+									onClick={() => setPaymentContract(null)}
+									className="w-9 h-9 rounded-xl flex items-center justify-center border border-theme-border-muted bg-white text-theme-text-muted disabled:opacity-50"
+								>
+									<X className="w-4 h-4" />
+								</button>
+							</div>
+						</div>
+
+						<div className="p-3 space-y-3">
+							<div className="grid grid-cols-3 gap-2">
+								<div className="rounded-2xl border border-theme-border-muted bg-theme-bg-body p-2">
+									<p className="text-[10px] font-bold uppercase text-theme-text-muted">Tổng</p>
+									<p className="text-xs font-black text-theme-text-dark mt-1">
+										{formatCurrency(calculateContractTotal(paymentContract))}
+									</p>
+								</div>
+								<div className="rounded-2xl border border-theme-border-muted bg-theme-bg-body p-2">
+									<p className="text-[10px] font-bold uppercase text-theme-text-muted">Đã thu</p>
+									<p className="text-xs font-black text-emerald-600 mt-1">
+										{formatCurrency(paymentContract.deposit)}
+									</p>
+								</div>
+								<div className="rounded-2xl border border-red-100 bg-red-50 p-2">
+									<p className="text-[10px] font-bold uppercase text-red-400">Còn nợ</p>
+									<p className="text-xs font-black text-red-600 mt-1">
+										{formatCurrency(Math.max(0, calculateRemaining(paymentContract)))}
+									</p>
+								</div>
+							</div>
+
+							<div>
+								<label className="block text-[10px] font-black uppercase tracking-[0.15em] text-theme-text-muted mb-1.5">
+									Số tiền khách thanh toán thêm
+								</label>
+								<input
+									value={paymentAmount}
+									onChange={(e) => setPaymentAmount(e.target.value)}
+									inputMode="numeric"
+									placeholder="Nhập số tiền"
+									className="w-full h-12 rounded-2xl border border-theme-border-muted bg-theme-bg-body px-3 text-sm font-bold text-theme-text-dark placeholder:text-theme-text-muted focus:outline-none focus:ring-2 focus:ring-theme-gold-primary/40 focus:border-theme-gold-primary"
+								/>
+								<p className="mt-1.5 text-[11px] text-theme-text-muted">
+									Chỉ nhập số tiền khách vừa trả thêm. Muốn xoá hết nợ thì bấm “Thanh toán hết”.
+								</p>
+							</div>
+
+							<div className="flex gap-2">
+								<button
+									type="button"
+									disabled={isUpdatingPayment}
+									onClick={() => handleUpdatePayment(false)}
+									className="flex-1 h-11 rounded-2xl bg-theme-gold-primary text-white text-xs font-black uppercase tracking-wide disabled:opacity-60"
+								>
+									{isUpdatingPayment ? "Đang lưu..." : "Cập nhật"}
+								</button>
+								<button
+									type="button"
+									disabled={isUpdatingPayment || calculateRemaining(paymentContract) <= 0}
+									onClick={() => handleUpdatePayment(true)}
+									className="flex-1 h-11 rounded-2xl border border-theme-border-muted bg-white text-theme-gold-hover text-xs font-black uppercase tracking-wide disabled:opacity-60"
+								>
+									Thanh toán hết
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
 			)}
 		</div>
 	);

@@ -165,6 +165,7 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 	const { fields: comboFields, append: appendCombo, remove: removeCombo } = useFieldArray({
 		control,
 		name: "combos",
+		keyName: "fieldId",
 	});
 	const { fields: mediaFields, append: appendMedia, remove: removeMedia } = useFieldArray({
 		control,
@@ -226,18 +227,23 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 
 	const onConfirmDownload = async () => {
 		setIsDownloadDialogOpen(false);
-		if (saveToDbOnDownload) {
-			const isValid = await form.trigger();
-			if (!isValid) { toast.error("Vui lòng điền đầy đủ thông tin hợp lệ trước khi lưu"); return; }
+		if (!saveToDbOnDownload) {
+			await onDownloadImage();
+			return;
+		}
+
+		await form.handleSubmit(async (data) => {
 			setIsSubmitting(true);
 			try {
-				const result = await saveWeddingContract(form.getValues() as WeddingContractSchema);
+				const result = await saveWeddingContract(data);
 				if (!result.success) { toast.error("Lưu thất bại: " + result.error); return; }
 				toast.success("Hợp đồng đã được lưu!");
-			} catch { toast.error("Lỗi khi lưu!"); return; }
+				await onDownloadImage();
+			} catch { toast.error("Lỗi khi lưu!"); }
 			finally { setIsSubmitting(false); }
-		}
-		await onDownloadImage();
+		}, () => {
+			toast.error("Vui lòng điền đầy đủ thông tin hợp lệ trước khi lưu");
+		})();
 	};
 
 	const onSubmit = async (data: WeddingContractSchema) => {
@@ -385,7 +391,7 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 						)}
 
 						{comboFields.map((combo, ci) => (
-							<div key={combo.id} className="rounded-2xl border border-theme-border bg-theme-bg-body overflow-hidden">
+							<div key={combo.fieldId} className="rounded-2xl border border-theme-border bg-theme-bg-body overflow-hidden">
 								{/* Combo header row */}
 								<div className="border-b border-theme-border p-2 space-y-2">
 									<Input
