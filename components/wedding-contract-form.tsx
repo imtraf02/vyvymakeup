@@ -376,23 +376,15 @@ export function WeddingContractForm({
 							Wedding Photography & Services
 						</p>
 						<div className="text-xs text-theme-text-muted space-y-0.5 mb-3">
+							<p>{settings?.address || "Hưng Long Hưng Thịnh Đồng Nai."}</p>
 							<p>
-								{settings?.address ||
-									"Hòa Bình, Đông Hoà, Trảng Bom, Đồng Nai."}
-							</p>
-							<p>
-								{settings?.email || "Studiohieutrancanon@gmail.com"}
+								{settings?.email || "vyvy1101@icloud.com"}
 								<span className="mx-2 text-theme-gold-primary">·</span>
-								{settings?.phone || "0388.660.678"}
+								{settings?.phone || "0933.361.945"}
 							</p>
 						</div>
 						<div className="flex flex-wrap justify-center gap-2">
-							{(
-								settings?.bankAccounts || [
-									{ bank: "Sacombank", account: "050096596674" },
-									{ bank: "MBBank", account: "0388660678" },
-								]
-							).map((acc: any, i: number) => (
+							{(settings?.bankAccounts || []).map((acc: any, i: number) => (
 								<div
 									key={i}
 									className="flex items-center gap-1.5 bg-theme-bg-muted border border-theme-border-muted rounded-lg px-2 py-1.5 text-[11px]"
