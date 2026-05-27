@@ -133,7 +133,7 @@ export function WeddingContractPreview({
 			>
 				{/* Background */}
 				<img
-					src={settings?.backgroundUrl || "/images/bg.jpg"}
+					src={settings?.backgroundUrl || "/images/bg-1.png"}
 					alt=""
 					className="absolute inset-0 w-full h-full object-cover -z-10"
 					aria-hidden="true"

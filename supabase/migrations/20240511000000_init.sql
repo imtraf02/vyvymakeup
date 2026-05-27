@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS public.settings (
     email TEXT DEFAULT 'Studiohieutrancanon@gmail.com',
     phone TEXT DEFAULT '0388.660.678',
     bank_accounts JSONB DEFAULT '[{"bank": "Sacombank", "account": "050096596674", "owner": "TRẦN QUỐC HIẾU"}, {"bank": "MBBank", "account": "0388660678", "owner": "TRẦN QUỐC HIẾU"}]',
-    background_url TEXT DEFAULT '/images/bg.jpg',
+    background_url TEXT DEFAULT '/images/bg-1.png',
     signature_url TEXT DEFAULT '/images/signature.png',
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

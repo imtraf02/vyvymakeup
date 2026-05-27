@@ -3,27 +3,51 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
-import { captureElement } from "@/lib/capture";
-import { CalendarIcon, Plus, Printer, Trash2, Download, ChevronDown, CheckCircle2, Circle, Eye, X } from "lucide-react";
+import {
+	CalendarIcon,
+	CheckCircle2,
+	ChevronDown,
+	Circle,
+	Download,
+	Eye,
+	Plus,
+	Printer,
+	Trash2,
+	X,
+} from "lucide-react";
 import * as React from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { getWeddingCombos, getSettings, saveWeddingContract, getWeddingExtraServices } from "@/app/actions";
-
+import {
+	getSettings,
+	getWeddingCombos,
+	getWeddingExtraServices,
+	saveWeddingContract,
+} from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Field } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
 	Dialog,
 	DialogContent,
-	DialogHeader,
-	DialogTitle,
 	DialogDescription,
 	DialogFooter,
+	DialogHeader,
+	DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import {
+	Drawer,
+	DrawerClose,
+	DrawerContent,
+	DrawerHeader,
+	DrawerTitle,
+} from "@/components/ui/drawer";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
 import {
 	Select,
 	SelectContent,
@@ -32,16 +56,14 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import {
-	Drawer,
-	DrawerContent,
-	DrawerHeader,
-	DrawerTitle,
-	DrawerClose,
-} from "@/components/ui/drawer";
-import { type WeddingContractSchema, weddingContractSchema } from "@/lib/schema";
-import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { captureElement } from "@/lib/capture";
+import {
+	type WeddingContractSchema,
+	weddingContractSchema,
+} from "@/lib/schema";
+import { cn } from "@/lib/utils";
 import { WeddingContractPreview } from "./wedding-contract-preview";
 
 interface WeddingContractFormProps {
@@ -51,7 +73,13 @@ interface WeddingContractFormProps {
 
 // ─── Micro components ────────────────────────────────────────────────────────
 
-function SectionHeader({ title, action }: { title: string; action?: React.ReactNode }) {
+function SectionHeader({
+	title,
+	action,
+}: {
+	title: string;
+	action?: React.ReactNode;
+}) {
 	return (
 		<div className="flex items-center justify-between px-2 py-2.5 bg-gradient-to-r from-theme-bg-muted to-white border-b border-theme-border">
 			<span className="text-[10px] uppercase tracking-[0.22em] font-bold text-theme-text-muted">
@@ -118,21 +146,30 @@ function DateButton({
 
 // Quick-pick deposit chips
 const DEPOSIT_AMOUNTS = [
-	1_000_000, 2_000_000, 3_000_000, 4_000_000,
-	5_000_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000,
+	1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000, 6_000_000, 7_000_000,
+	8_000_000, 9_000_000,
 ];
 
 const formatVND = (n: number) =>
-	new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
+	new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+		n,
+	);
 
 const formatShort = (n: number) =>
-	n >= 1_000_000 ? `${n / 1_000_000}tr` : new Intl.NumberFormat("vi-VN").format(n);
+	n >= 1_000_000
+		? `${n / 1_000_000}tr`
+		: new Intl.NumberFormat("vi-VN").format(n);
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function WeddingContractForm({ onDataChange, initialData }: WeddingContractFormProps) {
+export function WeddingContractForm({
+	onDataChange,
+	initialData,
+}: WeddingContractFormProps) {
 	const [masterCombos, setMasterCombos] = React.useState<any[]>([]);
-	const [masterExtraServices, setMasterExtraServices] = React.useState<any[]>([]);
+	const [masterExtraServices, setMasterExtraServices] = React.useState<any[]>(
+		[],
+	);
 	const [settings, setSettings] = React.useState<any>(null);
 	const [isSubmitting, setIsSubmitting] = React.useState(false);
 	const [isDownloading, setIsDownloading] = React.useState(false);
@@ -160,28 +197,47 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 		},
 	});
 
-	const { register, control, watch, setValue, formState: { errors } } = form;
+	const {
+		register,
+		control,
+		watch,
+		setValue,
+		formState: { errors },
+	} = form;
 
-	const { fields: comboFields, append: appendCombo, remove: removeCombo } = useFieldArray({
+	const {
+		fields: comboFields,
+		append: appendCombo,
+		remove: removeCombo,
+	} = useFieldArray({
 		control,
 		name: "combos",
 		keyName: "fieldId",
 	});
-	const { fields: mediaFields, append: appendMedia, remove: removeMedia } = useFieldArray({
+	const {
+		fields: mediaFields,
+		append: appendMedia,
+		remove: removeMedia,
+	} = useFieldArray({
 		control,
 		name: "mediaServices",
 	});
-	const { fields: extraFields, append: appendExtra, remove: removeExtra } = useFieldArray({
+	const {
+		fields: extraFields,
+		append: appendExtra,
+		remove: removeExtra,
+	} = useFieldArray({
 		control,
 		name: "extraServices",
 	});
 
 	React.useEffect(() => {
-		if (initialData) form.reset({
-			...initialData,
-			mediaServices: initialData.mediaServices || [],
-			extraServices: initialData.extraServices || [],
-		});
+		if (initialData)
+			form.reset({
+				...initialData,
+				mediaServices: initialData.mediaServices || [],
+				extraServices: initialData.extraServices || [],
+			});
 	}, [initialData, form]);
 
 	const values = watch();
@@ -216,7 +272,10 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 			const safeName = (form.getValues().customerName || "khach-hang")
 				.replace(/[^a-z0-9]/gi, "-")
 				.toLowerCase();
-			await captureElement("wedding-preview-content", `${format(new Date(), "dd-MM-yyyy")}-${safeName}`);
+			await captureElement(
+				"wedding-preview-content",
+				`${format(new Date(), "dd-MM-yyyy")}-${safeName}`,
+			);
 			toast.success("Đã tạo file ảnh thành công!");
 		} catch (err) {
 			toast.error("Không thể tạo file ảnh.");
@@ -232,18 +291,27 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 			return;
 		}
 
-		await form.handleSubmit(async (data) => {
-			setIsSubmitting(true);
-			try {
-				const result = await saveWeddingContract(data);
-				if (!result.success) { toast.error("Lưu thất bại: " + result.error); return; }
-				toast.success("Hợp đồng đã được lưu!");
-				await onDownloadImage();
-			} catch { toast.error("Lỗi khi lưu!"); }
-			finally { setIsSubmitting(false); }
-		}, () => {
-			toast.error("Vui lòng điền đầy đủ thông tin hợp lệ trước khi lưu");
-		})();
+		await form.handleSubmit(
+			async (data) => {
+				setIsSubmitting(true);
+				try {
+					const result = await saveWeddingContract(data);
+					if (!result.success) {
+						toast.error("Lưu thất bại: " + result.error);
+						return;
+					}
+					toast.success("Hợp đồng đã được lưu!");
+					await onDownloadImage();
+				} catch {
+					toast.error("Lỗi khi lưu!");
+				} finally {
+					setIsSubmitting(false);
+				}
+			},
+			() => {
+				toast.error("Vui lòng điền đầy đủ thông tin hợp lệ trước khi lưu");
+			},
+		)();
 	};
 
 	const onSubmit = async (data: WeddingContractSchema) => {
@@ -256,15 +324,33 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 			} else {
 				toast.error("Lỗi: " + result.error);
 			}
-		} catch { toast.error("Có lỗi xảy ra!"); }
-		finally { setIsSubmitting(false); }
+		} catch {
+			toast.error("Có lỗi xảy ra!");
+		} finally {
+			setIsSubmitting(false);
+		}
 	};
 
 	// Totals
-	const comboTotal = (values.combos || []).reduce((a, c) => a + (Number(c.basePrice) || 0), 0);
-	const mediaTotal = (values.mediaServices || []).reduce((a, c) => a + (Number(c.price) * (Number(c.quantity) || 1) || 0), 0);
-	const extraTotal = (values.extraServices || []).reduce((a, c) => a + (Number(c.price) * (Number(c.quantity) || 1) || 0), 0);
-	const subtotal = comboTotal + mediaTotal + extraTotal + (Number(values.travelFee) || 0) + (Number(values.incurredCost) || 0) - (Number(values.discount) || 0);
+	const comboTotal = (values.combos || []).reduce(
+		(a, c) => a + (Number(c.basePrice) || 0),
+		0,
+	);
+	const mediaTotal = (values.mediaServices || []).reduce(
+		(a, c) => a + (Number(c.price) * (Number(c.quantity) || 1) || 0),
+		0,
+	);
+	const extraTotal = (values.extraServices || []).reduce(
+		(a, c) => a + (Number(c.price) * (Number(c.quantity) || 1) || 0),
+		0,
+	);
+	const subtotal =
+		comboTotal +
+		mediaTotal +
+		extraTotal +
+		(Number(values.travelFee) || 0) +
+		(Number(values.incurredCost) || 0) -
+		(Number(values.discount) || 0);
 	const vatAmount = values.includeVAT ? subtotal * 0.1 : 0;
 	const totalPrice = subtotal + vatAmount;
 	const remaining = totalPrice - (Number(values.deposit) || 0);
@@ -282,7 +368,7 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 						<div className="flex items-center justify-center gap-2 mb-1">
 							<div className="h-px flex-1 bg-gradient-to-r from-transparent to-theme-gold-primary/50" />
 							<h1 className="text-xl font-bold tracking-[0.15em] text-theme-gold-hover">
-								{settings?.studioName || "HARMONY MEDIA"}
+								{settings?.studioName || "Vy Make up & Bridal"}
 							</h1>
 							<div className="h-px flex-1 bg-gradient-to-l from-transparent to-theme-gold-primary/50" />
 						</div>
@@ -290,7 +376,10 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 							Wedding Photography & Services
 						</p>
 						<div className="text-xs text-theme-text-muted space-y-0.5 mb-3">
-							<p>{settings?.address || "Hòa Bình, Đông Hoà, Trảng Bom, Đồng Nai."}</p>
+							<p>
+								{settings?.address ||
+									"Hòa Bình, Đông Hoà, Trảng Bom, Đồng Nai."}
+							</p>
 							<p>
 								{settings?.email || "Studiohieutrancanon@gmail.com"}
 								<span className="mx-2 text-theme-gold-primary">·</span>
@@ -298,14 +387,23 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 							</p>
 						</div>
 						<div className="flex flex-wrap justify-center gap-2">
-							{(settings?.bankAccounts || [
-								{ bank: "Sacombank", account: "050096596674" },
-								{ bank: "MBBank", account: "0388660678" },
-							]).map((acc: any, i: number) => (
-								<div key={i} className="flex items-center gap-1.5 bg-theme-bg-muted border border-theme-border-muted rounded-lg px-2 py-1.5 text-[11px]">
-									<span className="font-bold text-theme-text-muted">{acc.bank}</span>
+							{(
+								settings?.bankAccounts || [
+									{ bank: "Sacombank", account: "050096596674" },
+									{ bank: "MBBank", account: "0388660678" },
+								]
+							).map((acc: any, i: number) => (
+								<div
+									key={i}
+									className="flex items-center gap-1.5 bg-theme-bg-muted border border-theme-border-muted rounded-lg px-2 py-1.5 text-[11px]"
+								>
+									<span className="font-bold text-theme-text-muted">
+										{acc.bank}
+									</span>
 									<span className="text-theme-gold-primary">·</span>
-									<span className="font-mono tracking-wide text-theme-text-dark">{acc.account}</span>
+									<span className="font-mono tracking-wide text-theme-text-dark">
+										{acc.account}
+									</span>
 								</div>
 							))}
 						</div>
@@ -316,15 +414,28 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 				<Section title="Thông tin khách hàng">
 					<Field>
 						<Label>Tên khách hàng</Label>
-						<Input {...register("customerName")} placeholder="Nguyễn Văn A" className={inputCls} />
+						<Input
+							{...register("customerName")}
+							placeholder="Nguyễn Văn A"
+							className={inputCls}
+						/>
 					</Field>
 					<Field>
 						<Label>Số điện thoại (Không bắt buộc)</Label>
-						<Input {...register("phone")} placeholder="090..." className={inputCls} inputMode="tel" />
+						<Input
+							{...register("phone")}
+							placeholder="090..."
+							className={inputCls}
+							inputMode="tel"
+						/>
 					</Field>
 					<Field>
 						<Label>Địa chỉ</Label>
-						<Input {...register("address")} placeholder="Địa chỉ liên hệ..." className={inputCls} />
+						<Input
+							{...register("address")}
+							placeholder="Địa chỉ liên hệ..."
+							className={inputCls}
+						/>
 					</Field>
 				</Section>
 
@@ -337,9 +448,22 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 							name="weddingDate"
 							render={({ field }) => (
 								<Popover>
-									<PopoverTrigger render={<DateButton value={field.value} placeholder="Chọn ngày cưới" />} />
+									<PopoverTrigger
+										render={
+											<DateButton
+												value={field.value}
+												placeholder="Chọn ngày cưới"
+											/>
+										}
+									/>
 									<PopoverContent className="w-auto p-0" align="start">
-										<Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus locale={vi} />
+										<Calendar
+											mode="single"
+											selected={field.value}
+											onSelect={field.onChange}
+											initialFocus
+											locale={vi}
+										/>
 									</PopoverContent>
 								</Popover>
 							)}
@@ -375,7 +499,13 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 									size="sm"
 									variant="outline"
 									className="h-8 rounded-xl border-theme-border-muted text-theme-text-muted text-[11px] font-semibold"
-									onClick={() => appendCombo({ comboName: "Combo mới", basePrice: 0, services: [{ name: "", isRemoved: false }] })}
+									onClick={() =>
+										appendCombo({
+											comboName: "Combo mới",
+											basePrice: 0,
+											services: [{ name: "", isRemoved: false }],
+										})
+									}
 								>
 									<Plus className="w-3.5 h-3.5 mr-1" /> Thủ công
 								</Button>
@@ -391,7 +521,10 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 						)}
 
 						{comboFields.map((combo, ci) => (
-							<div key={combo.fieldId} className="rounded-2xl border border-theme-border bg-theme-bg-body overflow-hidden">
+							<div
+								key={combo.fieldId}
+								className="rounded-2xl border border-theme-border bg-theme-bg-body overflow-hidden"
+							>
 								{/* Combo header row */}
 								<div className="border-b border-theme-border p-2 space-y-2">
 									<Input
@@ -403,7 +536,9 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 										<Input
 											type="number"
 											inputMode="numeric"
-											{...register(`combos.${ci}.basePrice`, { valueAsNumber: true })}
+											{...register(`combos.${ci}.basePrice`, {
+												valueAsNumber: true,
+											})}
 										/>
 										<button
 											type="button"
@@ -422,17 +557,26 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 											key={si}
 											className={cn(
 												"flex items-center gap-3 p-2 rounded-xl transition-all",
-												svc.isRemoved ? "opacity-40 bg-slate-100" : "bg-white border border-theme-border-muted",
+												svc.isRemoved
+													? "opacity-40 bg-slate-100"
+													: "bg-white border border-theme-border-muted",
 											)}
 										>
 											<button
 												type="button"
-												onClick={() => setValue(`combos.${ci}.services.${si}.isRemoved`, !svc.isRemoved)}
+												onClick={() =>
+													setValue(
+														`combos.${ci}.services.${si}.isRemoved`,
+														!svc.isRemoved,
+													)
+												}
 												className="shrink-0"
 											>
-												{svc.isRemoved
-													? <Circle className="w-4 h-4 text-theme-text-muted" />
-													: <CheckCircle2 className="w-4 h-4 text-theme-gold-primary" />}
+												{svc.isRemoved ? (
+													<Circle className="w-4 h-4 text-theme-text-muted" />
+												) : (
+													<CheckCircle2 className="w-4 h-4 text-theme-gold-primary" />
+												)}
 											</button>
 											<Input
 												{...register(`combos.${ci}.services.${si}.name`)}
@@ -456,7 +600,10 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 										type="button"
 										onClick={() => {
 											const cur = form.getValues(`combos.${ci}.services`);
-											setValue(`combos.${ci}.services`, [...cur, { name: "", isRemoved: false }]);
+											setValue(`combos.${ci}.services`, [
+												...cur,
+												{ name: "", isRemoved: false },
+											]);
 										}}
 										className="flex items-center gap-1 text-[10px] text-theme-text-muted font-semibold mt-1 px-1 active:text-theme-gold-hover"
 									>
@@ -466,7 +613,9 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 
 								{/* Combo subtotal */}
 								<div className="flex justify-between items-center px-2 py-2 bg-gradient-to-r from-theme-bg-muted to-white border-t border-dashed border-theme-border">
-									<span className="text-[10px] uppercase font-bold text-theme-text-muted">Tổng combo</span>
+									<span className="text-[10px] uppercase font-bold text-theme-text-muted">
+										Tổng combo
+									</span>
 									<span className="font-bold text-sm text-theme-gold-primary">
 										{formatVND(Number(values.combos?.[ci]?.basePrice) || 0)}
 									</span>
@@ -495,7 +644,9 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 									size="sm"
 									variant="outline"
 									className="h-8 rounded-xl border border-theme-border-muted text-theme-text-muted text-[11px] font-semibold"
-									onClick={() => appendMedia({ name: "Dịch vụ mới", price: 0, quantity: 1 })}
+									onClick={() =>
+										appendMedia({ name: "Dịch vụ mới", price: 0, quantity: 1 })
+									}
 								>
 									<Plus className="w-3.5 h-3.5 mr-1" /> Thủ công
 								</Button>
@@ -511,7 +662,10 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 						)}
 
 						{mediaFields.map((field, index) => (
-							<div key={field.id} className="flex gap-2 items-start bg-theme-bg-body p-2 rounded-xl border border-theme-border-muted">
+							<div
+								key={field.id}
+								className="flex gap-2 items-start bg-theme-bg-body p-2 rounded-xl border border-theme-border-muted"
+							>
 								<div className="flex-1 space-y-1.5">
 									<Input
 										{...register(`mediaServices.${index}.name`)}
@@ -523,7 +677,9 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 											<Input
 												type="number"
 												inputMode="numeric"
-												{...register(`mediaServices.${index}.price`, { valueAsNumber: true })}
+												{...register(`mediaServices.${index}.price`, {
+													valueAsNumber: true,
+												})}
 												placeholder="Giá"
 												className="h-9 text-sm"
 											/>
@@ -532,7 +688,9 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 											<Input
 												type="number"
 												inputMode="numeric"
-												{...register(`mediaServices.${index}.quantity`, { valueAsNumber: true })}
+												{...register(`mediaServices.${index}.quantity`, {
+													valueAsNumber: true,
+												})}
 												placeholder="SL"
 												className="h-9 text-sm text-center"
 											/>
@@ -551,7 +709,9 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 
 						{mediaFields.length > 0 && (
 							<div className="flex justify-between items-center px-2 py-2 bg-gradient-to-r from-theme-gold-primary/5 to-white border-t border-dashed border-theme-border mt-2">
-								<span className="text-[10px] uppercase font-bold text-theme-text-muted">Tổng quay chụp</span>
+								<span className="text-[10px] uppercase font-bold text-theme-text-muted">
+									Tổng quay chụp
+								</span>
 								<span className="font-bold text-sm text-theme-gold-primary">
 									{formatVND(mediaTotal)}
 								</span>
@@ -579,7 +739,9 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 									size="sm"
 									variant="outline"
 									className="h-8 rounded-xl border-theme-border-muted text-theme-text-muted text-[11px] font-semibold"
-									onClick={() => appendExtra({ name: "Dịch vụ mới", price: 0, quantity: 1 })}
+									onClick={() =>
+										appendExtra({ name: "Dịch vụ mới", price: 0, quantity: 1 })
+									}
 								>
 									<Plus className="w-3.5 h-3.5 mr-1" /> Thủ công
 								</Button>
@@ -595,7 +757,10 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 						)}
 
 						{extraFields.map((field, index) => (
-							<div key={field.id} className="flex gap-2 items-start bg-theme-bg-body p-2 rounded-xl border border-theme-border-muted">
+							<div
+								key={field.id}
+								className="flex gap-2 items-start bg-theme-bg-body p-2 rounded-xl border border-theme-border-muted"
+							>
 								<div className="flex-1 space-y-1.5">
 									<Input
 										{...register(`extraServices.${index}.name`)}
@@ -607,7 +772,9 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 											<Input
 												type="number"
 												inputMode="numeric"
-												{...register(`extraServices.${index}.price`, { valueAsNumber: true })}
+												{...register(`extraServices.${index}.price`, {
+													valueAsNumber: true,
+												})}
 												placeholder="Giá"
 												className="h-9 text-sm"
 											/>
@@ -616,7 +783,9 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 											<Input
 												type="number"
 												inputMode="numeric"
-												{...register(`extraServices.${index}.quantity`, { valueAsNumber: true })}
+												{...register(`extraServices.${index}.quantity`, {
+													valueAsNumber: true,
+												})}
 												placeholder="SL"
 												className="h-9 text-sm text-center"
 											/>
@@ -635,7 +804,9 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 
 						{extraFields.length > 0 && (
 							<div className="flex justify-between items-center px-2 py-2 bg-gradient-to-r from-theme-bg-muted to-white border-t border-dashed border-theme-border mt-2">
-								<span className="text-[10px] uppercase font-bold text-theme-text-muted">Tổng dịch vụ lẻ</span>
+								<span className="text-[10px] uppercase font-bold text-theme-text-muted">
+									Tổng dịch vụ lẻ
+								</span>
 								<span className="font-bold text-sm text-theme-gold-primary">
 									{formatVND(extraTotal)}
 								</span>
@@ -650,40 +821,74 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 					<div className="grid grid-cols-2 gap-2">
 						<Field>
 							<Label>Phí di chuyển (₫)</Label>
-							<Input type="number" inputMode="numeric" {...register("travelFee", { valueAsNumber: true })} className={inputCls} />
+							<Input
+								type="number"
+								inputMode="numeric"
+								{...register("travelFee", { valueAsNumber: true })}
+								className={inputCls}
+							/>
 						</Field>
 						<Field>
 							<Label>Giảm giá (₫)</Label>
-							<Input type="number" inputMode="numeric" {...register("discount", { valueAsNumber: true })} className={inputCls} />
+							<Input
+								type="number"
+								inputMode="numeric"
+								{...register("discount", { valueAsNumber: true })}
+								className={inputCls}
+							/>
 						</Field>
 					</div>
 					<div className="grid grid-cols-2 gap-2">
 						<Field>
 							<Label>Chi phí phát sinh (₫)</Label>
-							<Input type="number" inputMode="numeric" {...register("incurredCost", { valueAsNumber: true })} className={inputCls} />
+							<Input
+								type="number"
+								inputMode="numeric"
+								{...register("incurredCost", { valueAsNumber: true })}
+								className={inputCls}
+							/>
 						</Field>
 						<Field>
 							<Label>Lý do phát sinh</Label>
-							<Input {...register("incurredCostReason")} placeholder="Lý do..." className={inputCls} />
+							<Input
+								{...register("incurredCostReason")}
+								placeholder="Lý do..."
+								className={inputCls}
+							/>
 						</Field>
 					</div>
 
 					{/* VAT toggle + total — prominent card */}
 					<div className="flex items-center justify-between p-2 bg-theme-bg-muted border border-theme-border-muted rounded-2xl">
 						<div>
-							<span className="text-[10px] uppercase font-bold text-theme-text-muted block mb-0.5">Tổng cộng</span>
-							<span className="text-2xl font-black text-theme-gold-primary">{formatVND(totalPrice)}</span>
+							<span className="text-[10px] uppercase font-bold text-theme-text-muted block mb-0.5">
+								Tổng cộng
+							</span>
+							<span className="text-2xl font-black text-theme-gold-primary">
+								{formatVND(totalPrice)}
+							</span>
 						</div>
 						<label className="flex items-center gap-2 cursor-pointer select-none">
-							<input type="checkbox" {...register("includeVAT")} className="w-5 h-5 rounded accent-theme-gold-primary" />
-							<span className="text-xs font-bold text-theme-gold-hover">VAT 10%</span>
+							<input
+								type="checkbox"
+								{...register("includeVAT")}
+								className="w-5 h-5 rounded accent-theme-gold-primary"
+							/>
+							<span className="text-xs font-bold text-theme-gold-hover">
+								VAT 10%
+							</span>
 						</label>
 					</div>
 
 					{/* Deposit */}
 					<div>
 						<Label>Đặt cọc (₫)</Label>
-						<Input type="number" inputMode="numeric" {...register("deposit", { valueAsNumber: true })} className={inputCls} />
+						<Input
+							type="number"
+							inputMode="numeric"
+							{...register("deposit", { valueAsNumber: true })}
+							className={inputCls}
+						/>
 						{/* Scrollable chip row */}
 						<div className="flex gap-1.5 mt-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
 							{DEPOSIT_AMOUNTS.map((v) => (
@@ -706,8 +911,12 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 
 					{/* Remaining — big red card */}
 					<div className="rounded-2xl bg-red-50 border border-red-100 p-2 flex items-center justify-between">
-						<span className="text-[10px] uppercase tracking-[0.18em] font-bold text-red-400">Còn lại phải thu</span>
-						<span className="text-2xl font-black text-red-500">{formatVND(remaining)}</span>
+						<span className="text-[10px] uppercase tracking-[0.18em] font-bold text-red-400">
+							Còn lại phải thu
+						</span>
+						<span className="text-2xl font-black text-red-500">
+							{formatVND(remaining)}
+						</span>
 					</div>
 
 					{/* Date pickers — stacked on mobile */}
@@ -719,9 +928,22 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 								name="pickupDate"
 								render={({ field }) => (
 									<Popover>
-										<PopoverTrigger render={<DateButton value={field.value} placeholder="Chọn ngày" />} />
+										<PopoverTrigger
+											render={
+												<DateButton
+													value={field.value}
+													placeholder="Chọn ngày"
+												/>
+											}
+										/>
 										<PopoverContent className="w-auto p-0" align="start">
-											<Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus locale={vi} />
+											<Calendar
+												mode="single"
+												selected={field.value}
+												onSelect={field.onChange}
+												initialFocus
+												locale={vi}
+											/>
 										</PopoverContent>
 									</Popover>
 								)}
@@ -734,9 +956,22 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 								name="contractDate"
 								render={({ field }) => (
 									<Popover>
-										<PopoverTrigger render={<DateButton value={field.value} placeholder="Chọn ngày" />} />
+										<PopoverTrigger
+											render={
+												<DateButton
+													value={field.value}
+													placeholder="Chọn ngày"
+												/>
+											}
+										/>
 										<PopoverContent className="w-auto p-0" align="start">
-											<Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus locale={vi} />
+											<Calendar
+												mode="single"
+												selected={field.value}
+												onSelect={field.onChange}
+												initialFocus
+												locale={vi}
+											/>
 										</PopoverContent>
 									</Popover>
 								)}
@@ -750,12 +985,20 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 					{/* Summary strip above buttons */}
 					<div className="bg-white/95 backdrop-blur-md border-t border-theme-border-muted px-2 pt-2 pb-0 flex items-center justify-between">
 						<div className="flex items-baseline gap-2">
-							<span className="text-[9px] uppercase font-bold text-theme-text-muted">Tổng</span>
-							<span className="text-base font-black text-theme-gold-primary">{formatVND(totalPrice)}</span>
+							<span className="text-[9px] uppercase font-bold text-theme-text-muted">
+								Tổng
+							</span>
+							<span className="text-base font-black text-theme-gold-primary">
+								{formatVND(totalPrice)}
+							</span>
 						</div>
 						<div className="flex items-baseline gap-2">
-							<span className="text-[9px] uppercase font-bold text-theme-text-muted">Còn lại</span>
-							<span className="text-base font-black text-red-500">{formatVND(remaining)}</span>
+							<span className="text-[9px] uppercase font-bold text-theme-text-muted">
+								Còn lại
+							</span>
+							<span className="text-base font-black text-red-500">
+								{formatVND(remaining)}
+							</span>
 						</div>
 					</div>
 
@@ -797,7 +1040,9 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 					<DrawerContent className="h-[90vh] bg-theme-bg-body">
 						<DrawerHeader className="border-b border-theme-border pb-2 shrink-0">
 							<div className="flex items-center justify-between">
-								<DrawerTitle className="text-sm font-bold text-theme-gold-hover uppercase tracking-widest">Xem trước</DrawerTitle>
+								<DrawerTitle className="text-sm font-bold text-theme-gold-hover uppercase tracking-widest">
+									Xem trước
+								</DrawerTitle>
 								<DrawerClose asChild>
 									<button className="w-8 h-8 flex items-center justify-center rounded-full bg-theme-bg-muted text-theme-text-muted">
 										<X className="w-4 h-4" />
@@ -806,17 +1051,25 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 							</div>
 						</DrawerHeader>
 						<div className="flex-1 overflow-auto p-2">
-							<WeddingContractPreview data={values as WeddingContractSchema} settings={settings} />
+							<WeddingContractPreview
+								data={values as WeddingContractSchema}
+								settings={settings}
+							/>
 						</div>
 					</DrawerContent>
 				</Drawer>
 			)}
 
 			{/* ── Download dialog ──────────────────────────────────────── */}
-			<Dialog open={isDownloadDialogOpen} onOpenChange={setIsDownloadDialogOpen}>
+			<Dialog
+				open={isDownloadDialogOpen}
+				onOpenChange={setIsDownloadDialogOpen}
+			>
 				<DialogContent className="w-[calc(100vw-2rem)] max-w-sm">
 					<DialogHeader>
-						<DialogTitle className="text-base font-bold text-theme-text-dark">Tải ảnh hợp đồng</DialogTitle>
+						<DialogTitle className="text-base font-bold text-theme-text-dark">
+							Tải ảnh hợp đồng
+						</DialogTitle>
 						<DialogDescription className="text-sm text-theme-text-muted mt-1">
 							Bạn có muốn lưu hợp đồng vào hệ thống trước khi tải ảnh không?
 						</DialogDescription>
@@ -829,7 +1082,9 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 							checked={saveToDbOnDownload}
 							onChange={(e) => setSaveToDbOnDownload(e.target.checked)}
 						/>
-						<span className="text-sm font-semibold text-theme-text-dark">Lưu vào cơ sở dữ liệu</span>
+						<span className="text-sm font-semibold text-theme-text-dark">
+							Lưu vào cơ sở dữ liệu
+						</span>
 					</label>
 
 					<DialogFooter className="flex-row gap-2 mt-2">
@@ -976,15 +1231,25 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 							</div>
 						</DrawerHeader>
 						<div className="flex-1 overflow-y-auto p-3 space-y-4 bg-theme-bg-body/30 overscroll-contain">
-							{Array.from(new Set(masterExtraServices.filter(s => s.category.toLowerCase().includes("chụp") || s.category.toLowerCase().includes("quay")).map(s => s.category))).map(category => (
+							{Array.from(
+								new Set(
+									masterExtraServices
+										.filter(
+											(s) =>
+												s.category.toLowerCase().includes("chụp") ||
+												s.category.toLowerCase().includes("quay"),
+										)
+										.map((s) => s.category),
+								),
+							).map((category) => (
 								<div key={category} className="space-y-2">
 									<h3 className="text-[10px] font-black tracking-[0.15em] uppercase text-theme-text-muted px-1">
 										{category}
 									</h3>
 									<div className="grid gap-2">
 										{masterExtraServices
-											.filter(s => s.category === category)
-											.map(service => (
+											.filter((s) => s.category === category)
+											.map((service) => (
 												<button
 													key={service.id}
 													type="button"
@@ -992,7 +1257,7 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 														appendMedia({
 															name: service.name,
 															price: service.price,
-															quantity: 1
+															quantity: 1,
 														});
 														setIsMediaDialogOpen(false);
 													}}
@@ -1014,7 +1279,11 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 									</div>
 								</div>
 							))}
-							{masterExtraServices.filter(s => s.category.toLowerCase().includes("chụp") || s.category.toLowerCase().includes("quay")).length === 0 && (
+							{masterExtraServices.filter(
+								(s) =>
+									s.category.toLowerCase().includes("chụp") ||
+									s.category.toLowerCase().includes("quay"),
+							).length === 0 && (
 								<p className="text-center py-10 text-theme-text-muted text-xs italic">
 									Chưa có dịch vụ mẫu nào thuộc danh mục Quay / Chụp.
 								</p>
@@ -1031,15 +1300,25 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 							</DialogTitle>
 						</DialogHeader>
 						<div className="flex-1 overflow-y-auto py-1 space-y-4 bg-theme-bg-body/30 min-h-0 overscroll-contain">
-							{Array.from(new Set(masterExtraServices.filter(s => s.category.toLowerCase().includes("chụp") || s.category.toLowerCase().includes("quay")).map(s => s.category))).map(category => (
+							{Array.from(
+								new Set(
+									masterExtraServices
+										.filter(
+											(s) =>
+												s.category.toLowerCase().includes("chụp") ||
+												s.category.toLowerCase().includes("quay"),
+										)
+										.map((s) => s.category),
+								),
+							).map((category) => (
 								<div key={category} className="space-y-2">
 									<h3 className="text-[10px] font-black tracking-[0.15em] uppercase text-theme-text-muted px-1">
 										{category}
 									</h3>
 									<div className="grid gap-2">
 										{masterExtraServices
-											.filter(s => s.category === category)
-											.map(service => (
+											.filter((s) => s.category === category)
+											.map((service) => (
 												<button
 													key={service.id}
 													type="button"
@@ -1047,7 +1326,7 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 														appendMedia({
 															name: service.name,
 															price: service.price,
-															quantity: 1
+															quantity: 1,
 														});
 														setIsMediaDialogOpen(false);
 													}}
@@ -1069,7 +1348,11 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 									</div>
 								</div>
 							))}
-							{masterExtraServices.filter(s => s.category.toLowerCase().includes("chụp") || s.category.toLowerCase().includes("quay")).length === 0 && (
+							{masterExtraServices.filter(
+								(s) =>
+									s.category.toLowerCase().includes("chụp") ||
+									s.category.toLowerCase().includes("quay"),
+							).length === 0 && (
 								<p className="text-center py-10 text-theme-text-muted text-xs italic">
 									Chưa có dịch vụ mẫu nào thuộc danh mục Quay / Chụp.
 								</p>
@@ -1104,15 +1387,25 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 							</div>
 						</DrawerHeader>
 						<div className="flex-1 overflow-y-auto p-3 space-y-4 bg-theme-bg-body/30 overscroll-contain">
-							{Array.from(new Set(masterExtraServices.filter(s => !s.category.toLowerCase().includes("chụp") && !s.category.toLowerCase().includes("quay")).map(s => s.category))).map(category => (
+							{Array.from(
+								new Set(
+									masterExtraServices
+										.filter(
+											(s) =>
+												!s.category.toLowerCase().includes("chụp") &&
+												!s.category.toLowerCase().includes("quay"),
+										)
+										.map((s) => s.category),
+								),
+							).map((category) => (
 								<div key={category} className="space-y-2">
 									<h3 className="text-[10px] font-black tracking-[0.15em] uppercase text-theme-text-muted px-1">
 										{category}
 									</h3>
 									<div className="grid gap-2">
 										{masterExtraServices
-											.filter(s => s.category === category)
-											.map(service => (
+											.filter((s) => s.category === category)
+											.map((service) => (
 												<button
 													key={service.id}
 													type="button"
@@ -1120,7 +1413,7 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 														appendExtra({
 															name: service.name,
 															price: service.price,
-															quantity: 1
+															quantity: 1,
 														});
 														setIsExtraDialogOpen(false);
 													}}
@@ -1154,15 +1447,25 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 							</DialogTitle>
 						</DialogHeader>
 						<div className="flex-1 overflow-y-auto py-1 space-y-4 bg-theme-bg-body/30 min-h-0 overscroll-contain">
-							{Array.from(new Set(masterExtraServices.filter(s => !s.category.toLowerCase().includes("chụp") && !s.category.toLowerCase().includes("quay")).map(s => s.category))).map(category => (
+							{Array.from(
+								new Set(
+									masterExtraServices
+										.filter(
+											(s) =>
+												!s.category.toLowerCase().includes("chụp") &&
+												!s.category.toLowerCase().includes("quay"),
+										)
+										.map((s) => s.category),
+								),
+							).map((category) => (
 								<div key={category} className="space-y-2">
 									<h3 className="text-[10px] font-black tracking-[0.15em] uppercase text-theme-text-muted px-1">
 										{category}
 									</h3>
 									<div className="grid gap-2">
 										{masterExtraServices
-											.filter(s => s.category === category)
-											.map(service => (
+											.filter((s) => s.category === category)
+											.map((service) => (
 												<button
 													key={service.id}
 													type="button"
@@ -1170,7 +1473,7 @@ export function WeddingContractForm({ onDataChange, initialData }: WeddingContra
 														appendExtra({
 															name: service.name,
 															price: service.price,
-															quantity: 1
+															quantity: 1,
 														});
 														setIsExtraDialogOpen(false);
 													}}

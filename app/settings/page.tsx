@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, Layers, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Layers, Plus, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 import { useFieldArray, useForm } from "react-hook-form";
@@ -101,10 +101,7 @@ export default function SettingsPage() {
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<Field>
 									<FieldLabel>Tên Studio</FieldLabel>
-									<Input
-										{...form.register("studioName")}
-										placeholder="HARMONY MEDIA"
-									/>
+									<Input {...form.register("studioName")} placeholder="VyVy" />
 								</Field>
 								<Field>
 									<FieldLabel>Số điện thoại</FieldLabel>
@@ -213,7 +210,39 @@ export default function SettingsPage() {
 						</div>
 						<div className="p-2 space-y-4">
 							<Field>
-								<FieldLabel>URL Hình nền (Background)</FieldLabel>
+								<FieldLabel>Hình nền (Background)</FieldLabel>
+								<div className="grid grid-cols-4 gap-2 mb-3">
+									{[1, 2, 3, 4].map((num) => {
+										const bgUrl = `/images/bg-${num}.png`;
+										const isSelected =
+											form.watch("backgroundUrl") === bgUrl;
+										return (
+											<button
+												key={num}
+												type="button"
+												onClick={() =>
+													form.setValue("backgroundUrl", bgUrl)
+												}
+												className={`relative aspect-[3/4] rounded-xl overflow-hidden border-2 transition-all focus:outline-none ${
+													isSelected
+														? "border-theme-gold-primary ring-2 ring-theme-gold-primary/30"
+														: "border-theme-border-muted hover:border-theme-gold-primary/50"
+												}`}
+											>
+												<img
+													src={bgUrl}
+													alt={`Background ${num}`}
+													className="w-full h-full object-cover"
+												/>
+												{isSelected && (
+													<div className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-theme-gold-primary flex items-center justify-center">
+														<Check className="w-2.5 h-2.5 text-white" />
+													</div>
+												)}
+											</button>
+										);
+									})}
+								</div>
 								<div className="flex gap-4 items-start">
 									<div className="flex-1">
 										<Input
@@ -222,8 +251,8 @@ export default function SettingsPage() {
 											className="h-10"
 										/>
 										<p className="mt-1.5 text-[10px] text-theme-text-muted italic">
-											Nhập đường dẫn URL của hình nền sẽ hiển thị phía sau hợp
-											đồng.
+											Chọn một hình nền có sẵn bên trên hoặc nhập URL tùy
+											chỉnh.
 										</p>
 									</div>
 									{form.watch("backgroundUrl") && (

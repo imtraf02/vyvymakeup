@@ -14,10 +14,7 @@ import { LogoutButton } from "@/components/logout-button";
 import { Button } from "@/components/ui/button";
 import { WeddingContractForm } from "@/components/wedding-contract-form";
 import { WeddingContractPreview } from "@/components/wedding-contract-preview";
-import type {
-	SettingsSchema,
-	WeddingContractSchema,
-} from "@/lib/schema";
+import type { SettingsSchema, WeddingContractSchema } from "@/lib/schema";
 import { mapToWeddingSchema } from "@/lib/utils";
 
 function HomeContent() {
@@ -52,7 +49,7 @@ function HomeContent() {
 					{/* Hàng 1 trên mobile: Logo + Actions */}
 					<div className="flex items-center justify-between">
 						<h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-theme-text-dark">
-							VyVy
+							Vy Make up & Bridal
 						</h1>
 						<div className="flex items-center gap-1.5 md:hidden">
 							{editId && (
@@ -119,9 +116,7 @@ function HomeContent() {
 
 					{/* Title/Indicator */}
 					<div className="flex gap-1.5 w-full md:w-auto md:absolute md:left-1/2 md:-translate-x-1/2">
-						<div
-							className="flex-1 md:flex-none flex items-center justify-center gap-2 p-2 px-4 rounded-xl text-sm font-bold bg-theme-gold-primary text-white shadow-lg shadow-theme-gold-primary/20"
-						>
+						<div className="flex-1 md:flex-none flex items-center justify-center gap-2 p-2 px-4 rounded-xl text-sm font-bold bg-theme-gold-primary text-white shadow-lg shadow-theme-gold-primary/20">
 							<Heart className="w-4 h-4" />
 							Hợp đồng Đám cưới
 						</div>
@@ -131,7 +126,10 @@ function HomeContent() {
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 					{/* Left: Form */}
 					<div className="no-print">
-						<WeddingContractForm onDataChange={setWeddingData} initialData={initialData} />
+						<WeddingContractForm
+							onDataChange={setWeddingData}
+							initialData={initialData}
+						/>
 					</div>
 
 					{/* Right: Preview (Desktop Only) */}
@@ -140,10 +138,7 @@ function HomeContent() {
 							<div className="no-print text-sm font-medium text-muted-foreground mb-4 text-center italic">
 								Xem trước hợp đồng
 							</div>
-							<WeddingContractPreview
-								data={weddingData}
-								settings={settings}
-							/>
+							<WeddingContractPreview data={weddingData} settings={settings} />
 						</div>
 					</div>
 				</div>

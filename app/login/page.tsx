@@ -23,7 +23,7 @@ export default function LoginPage() {
 						<Camera className="w-8 h-8 text-theme-gold-primary" />
 					</div>
 					<h1 className="text-2xl font-black text-theme-text-dark tracking-tight">
-						VyVy
+						Vy Make up & Bridal
 					</h1>
 					<p className="text-sm text-theme-text-muted mt-2 font-medium">
 						Đăng nhập hệ thống nội bộ
